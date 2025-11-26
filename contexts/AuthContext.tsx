@@ -9,6 +9,7 @@ interface AuthContextType {
   users: User[];
   sectors: Sector[];
   isPrivilegedUser: boolean;
+  hasFullVisibility: boolean; // Permissão para ver tudo (Admin, Gerente, Diretor)
   login: (email: string, pass: string) => Promise<boolean>;
   logout: () => void;
   addUser: (user: Omit<User, 'id'>) => Promise<void>;
@@ -138,18 +139,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (missingTables) return false;
 
     // Busca usuário no banco de dados REAL
+    // Usamos maybeSingle para retornar null caso não encontre (senha/email errados)
+    // ao invés de lançar erro PGRST116
     const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
         .eq('password', pass)
-        .single();
+        .maybeSingle();
 
     if (error) {
         console.error("Erro no login:", JSON.stringify(error));
+        return false;
     }
 
-    if (data && !error) {
+    if (data) {
       const userToStore = { ...data };
       delete userToStore.password;
       setUser(userToStore);
@@ -165,35 +169,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const isPrivilegedUser = user?.role === 'admin';
+  
+  // Regra de Visibilidade Total: Admin OU (Setor Gerente/Diretor)
+  const hasFullVisibility = isPrivilegedUser || (user?.sector === 'Gerente' || user?.sector === 'Diretor');
 
   const addUser = async (newUser: Omit<User, 'id'>) => {
-    const userPayload = { ...newUser, id: Date.now() }; 
+    const userPayload = { ...newUser, id: Date.now() };
+    // Atualização Otimista
+    setUsers(prev => [...prev, userPayload as User]);
     await supabase.from('users').insert(userPayload);
   };
 
   const updateUser = async (id: number, updatedUser: Partial<User>) => {
+    // Atualização Otimista
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updatedUser } : u));
     await supabase.from('users').update(updatedUser).eq('id', id);
   };
 
   const deleteUser = async (id: number) => {
+    // Atualização Otimista
+    setUsers(prev => prev.filter(u => u.id !== id));
     await supabase.from('users').delete().eq('id', id);
   };
   
   const addSector = async (newSector: Omit<Sector, 'id'>) => {
     const sectorPayload = { ...newSector, id: `sector-${Date.now()}` };
+    // Atualização Otimista
+    setSectors(prev => [...prev, sectorPayload]);
     await supabase.from('sectors').insert(sectorPayload);
   };
 
   const updateSector = async (id: string, updatedSector: Partial<Sector>) => {
+    // Atualização Otimista
+    setSectors(prev => prev.map(s => s.id === id ? { ...s, ...updatedSector } : s));
     await supabase.from('sectors').update(updatedSector).eq('id', id);
   };
 
   const deleteSector = async (id: string) => {
+    // Atualização Otimista
+    setSectors(prev => prev.filter(s => s.id !== id));
     await supabase.from('sectors').delete().eq('id', id);
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, sectors, isPrivilegedUser, login, logout, addUser, updateUser, deleteUser, addSector, updateSector, deleteSector, loading, connectionError, missingTables }}>
+    <AuthContext.Provider value={{ user, users, sectors, isPrivilegedUser, hasFullVisibility, login, logout, addUser, updateUser, deleteUser, addSector, updateSector, deleteSector, loading, connectionError, missingTables }}>
       {children}
     </AuthContext.Provider>
   );

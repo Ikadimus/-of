@@ -13,6 +13,7 @@ import RequestEditPage from './pages/RequestEditPage';
 import SettingsPage from './pages/SettingsPage';
 import UsersPage from './pages/UsersPage';
 import SectorsPage from './pages/SectorsPage';
+import ReportsPage from './pages/ReportsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const App: React.FC = () => {
@@ -51,6 +52,7 @@ const MainApp: React.FC = () => {
                         <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/users" element={<UsersPage />} />
                         <Route path="/sectors" element={<SectorsPage />} />
+                        <Route path="/reports" element={<ReportsPage />} />
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </main>

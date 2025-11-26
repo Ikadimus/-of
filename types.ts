@@ -1,3 +1,4 @@
+
 // Fix: Provide full content for types.ts to define data structures for the application.
 export interface RequestItem {
   id: string;
@@ -12,6 +13,7 @@ export interface Request {
   requestDate: string;
   sector: string;
   supplier: string;
+  description?: string; // Novo campo
   deliveryDate?: string;
   status: string;
   responsible: string;
@@ -26,6 +28,8 @@ export interface FormField {
   isActive: boolean;
   required: boolean;
   isStandard: boolean;
+  isVisibleInList?: boolean; // New property to control visibility in the list
+  orderIndex?: number;
 }
 
 export interface Status {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useRequests } from '../contexts/RequestContext';
 import { FormField, Status } from '../types';
@@ -14,7 +15,7 @@ const FieldFormModal: React.FC<{
     const [formData, setFormData] = useState<Partial<FormField>>({});
 
     useEffect(() => {
-        setFormData(field || { type: 'text' });
+        setFormData(field || { type: 'text', isVisibleInList: true });
     }, [field]);
 
     if (!isOpen) return null;
@@ -144,7 +145,7 @@ const SettingsPage: React.FC = () => {
     setFields(JSON.parse(JSON.stringify(formFields)));
   }, [formFields]);
   
-  const handleToggleChange = (id: string, key: 'isActive' | 'required', value: boolean) => {
+  const handleToggleChange = (id: string, key: 'isActive' | 'required' | 'isVisibleInList', value: boolean) => {
     setFields(prevFields =>
       prevFields.map(field => {
         if (field.id === id) {
@@ -237,7 +238,7 @@ const SettingsPage: React.FC = () => {
           </div>
           <div className="flex items-center space-x-2">
             <Button onClick={() => handleOpenFieldModal(null)}>+ Novo Campo</Button>
-            {hasChanges && <Button onClick={handleSaveToggles}>Salvar Alterações de Ativação/Obrigatoriedade</Button>}
+            {hasChanges && <Button onClick={handleSaveToggles}>Salvar Alterações</Button>}
           </div>
         </div>
 
@@ -247,8 +248,9 @@ const SettingsPage: React.FC = () => {
               <thead className="bg-zinc-800/50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Campo</th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Ativo</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Ativo (Formulário)</th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Obrigatório</th>
+                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Mostrar na Lista</th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -273,6 +275,14 @@ const SettingsPage: React.FC = () => {
                           checked={field.required}
                           onChange={(checked) => handleToggleChange(String(field.id), 'required', checked)}
                           disabled={!field.isActive}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex justify-center">
+                        <ToggleSwitch
+                          checked={field.isVisibleInList ?? true}
+                          onChange={(checked) => handleToggleChange(String(field.id), 'isVisibleInList', checked)}
                         />
                       </div>
                     </td>

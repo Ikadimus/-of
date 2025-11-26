@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useRequests } from '../contexts/RequestContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,20 +46,81 @@ const formatDate = (dateString: string | undefined) => {
 
 const DashboardPage: React.FC = () => {
   const { requests, loading } = useRequests();
-  const { user } = useAuth();
+  const { user, hasFullVisibility, sectors } = useAuth();
+
+  const filteredRequests = useMemo(() => {
+      if (loading || !user) return [];
+      // Se tiver visibilidade total (Admin, Gerente, Diretor), vê tudo. Se não, filtra pelo setor.
+      if (hasFullVisibility) return requests;
+      return requests.filter(r => r.sector === user.sector);
+  }, [requests, user, hasFullVisibility, loading]);
+
+  // --- Estatísticas Mensais ---
+  const monthlyStats = useMemo(() => {
+      const stats: { name: string; count: number }[] = [];
+      const today = new Date();
+      
+      // Gera os últimos 6 meses
+      for (let i = 5; i >= 0; i--) {
+          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const monthName = d.toLocaleString('pt-BR', { month: 'short' });
+          const yearShort = d.getFullYear().toString().slice(2);
+          const key = `${monthName}/${yearShort}`;
+          
+          // Filtra requests desse mês/ano
+          const count = filteredRequests.filter(req => {
+             if (!req.requestDate) return false;
+             const reqDate = new Date(req.requestDate);
+             // Ajuste de fuso horário simples (considerando data YYYY-MM-DD)
+             // Vamos comparar strings YYYY-MM para ser mais seguro
+             const reqYearMonth = req.requestDate.slice(0, 7); // "2023-10"
+             const currentYearMonth = d.toISOString().slice(0, 7);
+             return reqYearMonth === currentYearMonth;
+          }).length;
+
+          stats.push({ name: key, count });
+      }
+      return stats;
+  }, [filteredRequests]);
+
+  const maxMonthlyCount = Math.max(...monthlyStats.map(s => s.count), 1); // Evita divisão por zero
+
+  // --- Estatísticas por Setor ---
+  const sectorStats = useMemo(() => {
+      // 1. Inicializa contagem com todos os setores cadastrados (para mostrar 0 se não tiver nada)
+      const counts: Record<string, number> = {};
+      
+      // Se for Admin/Gerente, mostramos todos os setores. Se for usuário comum, foca no dele (mas a lógica filteredRequests já limita os dados)
+      // Porém, para o gráfico ficar bonito para o Admin, pegamos a lista completa de 'sectors'
+      sectors.forEach(s => {
+          counts[s.name] = 0;
+      });
+
+      // 2. Conta as solicitações
+      filteredRequests.forEach(req => {
+          const sName = req.sector || 'Sem Setor';
+          counts[sName] = (counts[sName] || 0) + 1;
+      });
+
+      // 3. Transforma em array e ordena
+      return Object.entries(counts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count); // Ordena do maior para o menor
+  }, [filteredRequests, sectors]);
+
+  const maxSectorCount = Math.max(...sectorStats.map(s => s.count), 1);
 
   if (loading) {
     return <div className="text-center p-10 text-gray-400">Carregando...</div>;
   }
   
-  const total = requests.length;
-  const pending = requests.filter(r => r.status === 'Pendente').length;
-  const inProgress = requests.filter(r => r.status === 'Em Andamento').length;
-  const concluded = requests.filter(r => r.status === 'Entregue').length;
+  const total = filteredRequests.length;
+  const pending = filteredRequests.filter(r => r.status === 'Pendente').length;
+  const inProgress = filteredRequests.filter(r => r.status === 'Em Andamento').length;
+  const concluded = filteredRequests.filter(r => r.status === 'Entregue').length;
   
-  const recentRequests = requests.slice(0, 5);
-
-  const today = new Date().toISOString().split('T')[0];
+  const recentRequests = filteredRequests.slice(0, 5);
+  const todayDate = new Date().toISOString().split('T')[0];
 
   return (
     <div className="space-y-8">
@@ -66,7 +128,11 @@ const DashboardPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-white">Bem-vindo, {user?.name.split(' ')[0]}</h1>
-          <p className="text-gray-400">Visão geral das solicitações de suprimentos</p>
+          <p className="text-gray-400">
+             {hasFullVisibility 
+                ? 'Visão geral de todas as solicitações' 
+                : `Visão geral das solicitações do setor ${user?.sector}`}
+          </p>
         </div>
       </div>
       
@@ -78,13 +144,71 @@ const DashboardPage: React.FC = () => {
         <StatCard title="Concluídas" value={concluded} icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>} />
       </div>
 
+      {/* --- GRÁFICOS --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Gráfico Mensal */}
+          <div className="bg-zinc-900 shadow-xl rounded-lg p-6 border border-zinc-800">
+              <h3 className="text-lg font-bold text-white mb-6">Solicitações por Mês</h3>
+              <div className="flex items-end justify-between h-48 space-x-2">
+                  {monthlyStats.map((stat, index) => {
+                      const heightPercentage = Math.round((stat.count / maxMonthlyCount) * 100);
+                      return (
+                          <div key={index} className="flex flex-col items-center flex-1 group">
+                              <div className="relative w-full flex justify-center items-end h-full">
+                                  <div 
+                                      style={{ height: `${heightPercentage}%` }} 
+                                      className={`w-full max-w-[40px] rounded-t-sm transition-all duration-500 ${stat.count > 0 ? 'bg-blue-600 group-hover:bg-blue-500' : 'bg-zinc-800 h-1'}`}
+                                  ></div>
+                                  {/* Tooltip on hover */}
+                                  <div className="absolute -top-8 bg-zinc-700 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {stat.count}
+                                  </div>
+                              </div>
+                              <span className="text-xs text-gray-400 mt-2 font-medium uppercase">{stat.name.split('/')[0]}</span>
+                          </div>
+                      );
+                  })}
+              </div>
+          </div>
+
+          {/* Gráfico por Setor */}
+          <div className="bg-zinc-900 shadow-xl rounded-lg p-6 border border-zinc-800">
+              <h3 className="text-lg font-bold text-white mb-6">Solicitações por Setor</h3>
+              <div className="space-y-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  {sectorStats.map((stat, index) => {
+                      const widthPercentage = Math.round((stat.count / total) * 100) || 0;
+                      // Calcular largura relativa ao maior setor para a barra visual ficar boa
+                      const visualWidth = Math.round((stat.count / maxSectorCount) * 100);
+                      
+                      return (
+                          <div key={index}>
+                              <div className="flex justify-between text-sm mb-1">
+                                  <span className="text-gray-300 font-medium">{stat.name}</span>
+                                  <span className="text-gray-400">{stat.count} <span className="text-xs text-zinc-600">({widthPercentage}%)</span></span>
+                              </div>
+                              <div className="w-full bg-zinc-800 rounded-full h-2.5">
+                                  <div 
+                                      className="bg-purple-600 h-2.5 rounded-full transition-all duration-500" 
+                                      style={{ width: `${visualWidth}%` }}
+                                  ></div>
+                              </div>
+                          </div>
+                      );
+                  })}
+                  {sectorStats.length === 0 && <p className="text-gray-500 text-sm">Nenhum setor encontrado.</p>}
+              </div>
+          </div>
+
+      </div>
+
       {/* Recent Requests Table */}
        <div className="bg-zinc-900 shadow-xl rounded-lg overflow-hidden border border-zinc-800">
         <div className="p-6 flex justify-between items-center">
             <div>
                 <h2 className="text-xl font-bold text-white">Solicitações Recentes</h2>
                 <p className="text-sm text-gray-400">
-                    {user?.role === 'admin' ? 'Visão geral de todos os setores' : `Apenas solicitações do setor ${user?.sector}`}
+                    {hasFullVisibility ? 'Todos os setores' : `Setor: ${user?.sector}`}
                 </p>
             </div>
           <Button as="link" to="/requests" variant="secondary">Ver Todas</Button>
@@ -95,6 +219,7 @@ const DashboardPage: React.FC = () => {
                 <thead className="bg-zinc-800/50">
                     <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Nº Pedido</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Descrição</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Fornecedor</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Responsável</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
@@ -104,10 +229,11 @@ const DashboardPage: React.FC = () => {
                 </thead>
                  <tbody className="divide-y divide-zinc-800">
                     {recentRequests.length > 0 ? recentRequests.map((request) => {
-                        const isOverdue = request.deliveryDate && request.deliveryDate < today && request.status !== 'Entregue';
+                        const isOverdue = request.deliveryDate && request.deliveryDate < todayDate && request.status !== 'Entregue';
                         return (
                         <tr key={request.id} className="hover:bg-zinc-800/50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{request.orderNumber}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 max-w-xs truncate" title={request.description}>{request.description || '-'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.supplier}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.responsible || 'N/A'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -125,7 +251,7 @@ const DashboardPage: React.FC = () => {
                         );
                     }) : (
                         <tr>
-                            <td colSpan={6} className="text-center py-10 text-gray-500">
+                            <td colSpan={7} className="text-center py-10 text-gray-500">
                                 Nenhuma solicitação encontrada.
                             </td>
                         </tr>

@@ -1,10 +1,13 @@
-// Fix: Provide full content for constants.ts to define initial data for the application.
+
+// Fix: Provide full content for types.ts to define data structures for the application.
 import { Request, FormField, Status, User, Sector } from './types';
 
 export const initialSectors: Sector[] = [
   { id: 'sector-1', name: 'TI', description: 'Tecnologia da Informação' },
   { id: 'sector-2', name: 'RH', description: 'Recursos Humanos' },
   { id: 'sector-3', name: 'Financeiro', description: 'Departamento Financeiro' },
+  { id: 'sector-4', name: 'Gerente', description: 'Gerência Geral - Visão Global' },
+  { id: 'sector-5', name: 'Diretor', description: 'Diretoria - Visão Global' },
 ];
 
 export const initialUsers: User[] = [
@@ -22,14 +25,15 @@ export const initialStatuses: Status[] = [
 ];
 
 export const initialFormFields: FormField[] = [
-    { id: 'orderNumber', label: 'Nº do Pedido', type: 'text', isActive: true, required: true, isStandard: true },
-    { id: 'requestDate', label: 'Data da Solicitação', type: 'date', isActive: true, required: true, isStandard: true },
-    { id: 'sector', label: 'Setor', type: 'select', isActive: true, required: true, isStandard: true },
-    { id: 'supplier', label: 'Fornecedor', type: 'text', isActive: true, required: true, isStandard: true },
-    { id: 'deliveryDate', label: 'Previsão de Entrega', type: 'date', isActive: true, required: false, isStandard: true },
-    { id: 'status', label: 'Status', type: 'select', isActive: true, required: true, isStandard: true },
-    { id: 'responsible', label: 'Responsável', type: 'select', isActive: true, required: true, isStandard: true },
-    { id: 'notes', label: 'Observações', type: 'textarea', isActive: false, required: false, isStandard: false },
+    { id: 'orderNumber', label: 'Nº do Pedido', type: 'text', isActive: true, required: true, isStandard: true, isVisibleInList: true, orderIndex: 1 },
+    { id: 'description', label: 'Descrição', type: 'text', isActive: true, required: false, isStandard: true, isVisibleInList: true, orderIndex: 2 },
+    { id: 'requestDate', label: 'Data da Solicitação', type: 'date', isActive: true, required: true, isStandard: true, isVisibleInList: true, orderIndex: 3 },
+    { id: 'sector', label: 'Setor', type: 'select', isActive: true, required: true, isStandard: true, isVisibleInList: false, orderIndex: 4 },
+    { id: 'supplier', label: 'Fornecedor', type: 'text', isActive: true, required: true, isStandard: true, isVisibleInList: true, orderIndex: 5 },
+    { id: 'deliveryDate', label: 'Previsão de Entrega', type: 'date', isActive: true, required: false, isStandard: true, isVisibleInList: false, orderIndex: 6 },
+    { id: 'status', label: 'Status', type: 'select', isActive: true, required: true, isStandard: true, isVisibleInList: true, orderIndex: 7 },
+    { id: 'responsible', label: 'Responsável', type: 'select', isActive: true, required: true, isStandard: true, isVisibleInList: true, orderIndex: 8 },
+    { id: 'notes', label: 'Observações', type: 'textarea', isActive: false, required: false, isStandard: false, isVisibleInList: false, orderIndex: 9 },
 ];
 
 export const initialRequests: Request[] = [
@@ -39,6 +43,7 @@ export const initialRequests: Request[] = [
     requestDate: '2023-10-01',
     sector: 'TI',
     supplier: 'Fornecedor A',
+    description: 'Compra de periféricos urgentes',
     deliveryDate: '2023-10-10',
     status: 'Entregue',
     responsible: 'Administrador',
@@ -54,6 +59,7 @@ export const initialRequests: Request[] = [
     requestDate: '2023-10-02',
     sector: 'RH',
     supplier: 'Fornecedor B',
+    description: 'Mobiliário para nova sala',
     deliveryDate: '2023-10-15',
     status: 'Em Andamento',
     responsible: 'John Doe',
@@ -67,6 +73,7 @@ export const initialRequests: Request[] = [
     requestDate: '2023-10-03',
     sector: 'Financeiro',
     supplier: 'Fornecedor C',
+    description: 'Materiais de escritório diversos',
     deliveryDate: '2023-10-20',
     status: 'Pendente',
     responsible: 'Jane Smith',

@@ -68,7 +68,9 @@ const RequestEditPage: React.FC = () => {
     e.preventDefault();
     if (requestData && requestData.id) {
         updateRequest(requestData.id, { ...requestData, items });
-        navigate(`/requests/${requestData.id}`);
+        // Utiliza replace: true para substituir a entrada atual no histórico
+        // Isso impede que o botão "Voltar" retorne para a tela de edição
+        navigate(`/requests/${requestData.id}`, { replace: true });
     }
   };
 

@@ -50,7 +50,12 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (fieldsError && fieldsError.code !== 'PGRST205' && fieldsError.code !== '42P01') {
              // Apenas loga erro real
         } else if (fieldsData && fieldsData.length > 0) {
-            setFormFields(fieldsData);
+            // Garante que o campo isVisibleInList exista (backwards compatibility)
+            const sanitizedFields = fieldsData.map((f: any) => ({
+                ...f,
+                isVisibleInList: f.isVisibleInList !== undefined ? f.isVisibleInList : (f.isStandard ? true : false)
+            }));
+            setFormFields(sanitizedFields);
         } else if (!fieldsError) {
             // Auto-seed se vazio e sem erro de tabela
             console.log("Configurando campos iniciais no banco...");
@@ -91,7 +96,6 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     loadAll();
 
     // REALTIME: Ouve mudanças em qualquer tabela relevante
-    // Nota: Se as tabelas não existirem, o subscribe pode falhar silenciosamente ou reconectar depois
     const requestsChannel = supabase
       .channel('public:requests')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
@@ -126,18 +130,30 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const addRequest = async (request: Omit<Request, 'id'>) => {
     const newRequest = { ...request, id: Date.now() }; 
+    // Atualização otimista: atualiza o estado local imediatamente
+    setRequests(prev => [newRequest as Request, ...prev]);
+    
     await supabase.from('requests').insert(newRequest);
   };
 
   const updateRequest = async (id: number, updatedRequest: Partial<Request>) => {
+    // Atualização otimista
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, ...updatedRequest } : r));
+
     await supabase.from('requests').update(updatedRequest).eq('id', id);
   };
 
   const deleteRequest = async (id: number) => {
+    // Atualização otimista
+    setRequests(prev => prev.filter(r => r.id !== id));
+
     await supabase.from('requests').delete().eq('id', id);
   };
   
   const updateFormFields = async (fields: FormField[]) => {
+    // Atualização otimista
+    setFormFields(fields);
+
     for (const field of fields) {
         await supabase.from('form_fields').upsert(field);
     }
@@ -150,28 +166,47 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
       isActive: true,
       required: false,
       isStandard: false,
+      isVisibleInList: true // Default to true for new fields
     };
+    // Atualização otimista
+    setFormFields(prev => [...prev, newField]);
+
     await supabase.from('form_fields').insert(newField);
   };
 
   const updateFormField = async (id: string, updatedField: Partial<FormField>) => {
+    // Atualização otimista
+    setFormFields(prev => prev.map(f => f.id === id ? { ...f, ...updatedField } : f));
+
     await supabase.from('form_fields').update(updatedField).eq('id', id);
   };
 
   const deleteFormField = async (id: string) => {
+    // Atualização otimista
+    setFormFields(prev => prev.filter(f => f.id !== id));
+
     await supabase.from('form_fields').delete().eq('id', id);
   };
 
   const addStatus = async (status: Omit<Status, 'id'>) => {
     const newStatus = { ...status, id: `status-${Date.now()}` };
+    // Atualização otimista
+    setStatuses(prev => [...prev, newStatus]);
+
     await supabase.from('statuses').insert(newStatus);
   };
 
   const updateStatus = async (id: string, updatedStatus: Partial<Status>) => {
+    // Atualização otimista
+    setStatuses(prev => prev.map(s => s.id === id ? { ...s, ...updatedStatus } : s));
+
     await supabase.from('statuses').update(updatedStatus).eq('id', id);
   };
 
   const deleteStatus = async (id: string) => {
+    // Atualização otimista
+    setStatuses(prev => prev.filter(s => s.id !== id));
+
     await supabase.from('statuses').delete().eq('id', id);
   };
 

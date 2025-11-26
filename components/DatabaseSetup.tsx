@@ -28,6 +28,7 @@ create table if not exists public.requests (
   "requestDate" text,
   sector text,
   supplier text,
+  description text,
   "deliveryDate" text,
   status text,
   responsible text,
@@ -42,7 +43,9 @@ create table if not exists public.form_fields (
   type text not null,
   "isActive" boolean default true,
   required boolean default false,
-  "isStandard" boolean default false
+  "isStandard" boolean default false,
+  "isVisibleInList" boolean default true,
+  "orderIndex" integer
 );
 
 -- 5. Tabela de Status
@@ -64,6 +67,47 @@ create policy "Enable all access for all users" on public.users for all using (t
 create policy "Enable all access for all users" on public.requests for all using (true) with check (true);
 create policy "Enable all access for all users" on public.form_fields for all using (true) with check (true);
 create policy "Enable all access for all users" on public.statuses for all using (true) with check (true);
+
+-- 7. ATUALIZAÇÕES (Execute para migrar bancos existentes)
+
+-- Adiciona coluna de visibilidade
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_name='form_fields' and column_name='isVisibleInList') then 
+    alter table public.form_fields add column "isVisibleInList" boolean default true; 
+  end if; 
+end $$;
+
+-- Adiciona coluna de ordem
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_name='form_fields' and column_name='orderIndex') then 
+    alter table public.form_fields add column "orderIndex" integer; 
+  end if; 
+end $$;
+
+-- Adiciona coluna de Descrição na tabela de Solicitações
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='description') then 
+    alter table public.requests add column "description" text; 
+  end if; 
+end $$;
+
+-- Insere o campo 'description' na configuração de campos se não existir
+insert into public.form_fields (id, label, type, "isActive", required, "isStandard", "isVisibleInList", "orderIndex")
+select 'description', 'Descrição', 'text', true, false, true, true, 2
+where not exists (select 1 from public.form_fields where id = 'description');
+
+-- Insere setores especiais se não existirem
+insert into public.sectors (id, name, description)
+select 'sector-manager', 'Gerente', 'Gerência Geral - Visão Global'
+where not exists (select 1 from public.sectors where name = 'Gerente');
+
+insert into public.sectors (id, name, description)
+select 'sector-director', 'Diretor', 'Diretoria - Visão Global'
+where not exists (select 1 from public.sectors where name = 'Diretor');
+
 `;
 
   const copyToClipboard = () => {
