@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequests } from '../contexts/RequestContext';
@@ -14,10 +15,12 @@ const RequestNewPage: React.FC = () => {
     orderNumber: `PED-${Date.now().toString().slice(-6)}`,
     requestDate: new Date().toISOString().slice(0, 10),
     sector: user?.sector || '',
+    requester: user?.name || '', // Solicitante = Quem está logado
     supplier: '',
+    description: '',
     deliveryDate: '',
     status: statuses[0]?.name || '',
-    responsible: user?.name || '',
+    responsible: '', // Responsável = Vazio inicialmente (quem vai atender)
     items: [],
     customFields: {},
   };
@@ -81,7 +84,8 @@ const RequestNewPage: React.FC = () => {
                 let options: string[] = [];
                 if (field.id === 'status') options = statuses.map(s => s.name);
                 if (field.id === 'sector') options = sectors.map(s => s.name);
-                if (field.id === 'responsible') options = users.map(u => u.name);
+                // Tanto Solicitante quanto Responsável puxam a lista de Usuários
+                if (field.id === 'responsible' || field.id === 'requester') options = users.map(u => u.name);
                 
                 return (
                      <div key={field.id}>
@@ -94,8 +98,28 @@ const RequestNewPage: React.FC = () => {
                           required={field.required}
                           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-600 bg-gray-800 text-gray-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                         >
+                            <option value="">Selecione...</option>
                             {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
+                    </div>
+                );
+            }
+
+            // Tratamento especial para Textarea
+            if (field.id === 'description' || field.type === 'textarea') {
+                return (
+                    <div key={field.id} className="col-span-1 md:col-span-2">
+                        <label htmlFor={field.id} className="block text-sm font-medium text-gray-300">{field.label}</label>
+                        <textarea
+                            id={String(field.id)}
+                            name={String(field.id)}
+                            value={value}
+                            onChange={handleInputChange}
+                            required={field.required}
+                            rows={6}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 placeholder-gray-500 text-gray-100 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono text-sm leading-relaxed"
+                            placeholder="Descreva a solicitação..."
+                        />
                     </div>
                 );
             }

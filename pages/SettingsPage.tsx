@@ -12,11 +12,14 @@ const FieldFormModal: React.FC<{
     onSave: (field: Partial<FormField>) => void;
     field: Partial<FormField> | null;
 }> = ({ isOpen, onClose, onSave, field }) => {
-    const [formData, setFormData] = useState<Partial<FormField>>({});
+    // Inicialização robusta com valores padrão
+    const [formData, setFormData] = useState<Partial<FormField>>({ type: 'text', isVisibleInList: true });
 
     useEffect(() => {
-        setFormData(field || { type: 'text', isVisibleInList: true });
-    }, [field]);
+        if (isOpen) {
+            setFormData(field || { type: 'text', isVisibleInList: true });
+        }
+    }, [field, isOpen]);
 
     if (!isOpen) return null;
 
@@ -27,7 +30,13 @@ const FieldFormModal: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        // Garante valores padrão antes de salvar
+        const finalData = {
+            ...formData,
+            type: formData.type || 'text',
+            isVisibleInList: formData.isVisibleInList ?? true
+        };
+        onSave(finalData);
     };
 
     const isEditing = !!field?.id;
@@ -44,12 +53,12 @@ const FieldFormModal: React.FC<{
                         <div className="mt-6 space-y-4">
                             <div>
                                 <label className="text-sm font-medium text-gray-300">Rótulo do Campo</label>
-                                <input type="text" name="label" value={formData.label || ''} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm" />
+                                <input type="text" name="label" value={formData.label || ''} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm text-white" />
                             </div>
                             {!isEditing && (
                                 <div>
                                     <label className="text-sm font-medium text-gray-300">Tipo do Campo</label>
-                                    <select name="type" value={formData.type || 'text'} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm">
+                                    <select name="type" value={formData.type || 'text'} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm text-white">
                                         <option value="text">Texto</option>
                                         <option value="textarea">Área de Texto</option>
                                         <option value="number">Número</option>
@@ -75,12 +84,15 @@ const StatusFormModal: React.FC<{
     onSave: (status: Partial<Status>) => void;
     status: Partial<Status> | null;
 }> = ({ isOpen, onClose, onSave, status }) => {
-    const [formData, setFormData] = useState<Partial<Status>>({});
+    // Inicialização robusta com valores padrão
+    const [formData, setFormData] = useState<Partial<Status>>({ color: 'gray' });
     const colors: Status['color'][] = ['yellow', 'blue', 'purple', 'green', 'red', 'gray'];
 
     useEffect(() => {
-        setFormData(status || { color: 'gray' });
-    }, [status]);
+        if (isOpen) {
+            setFormData(status || { color: 'gray' });
+        }
+    }, [status, isOpen]);
 
     if (!isOpen) return null;
 
@@ -91,7 +103,12 @@ const StatusFormModal: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        // Garante valores padrão antes de salvar
+        const finalData = {
+            ...formData,
+            color: formData.color || 'gray'
+        };
+        onSave(finalData);
     };
     
     const isEditing = !!status?.id;
@@ -108,11 +125,11 @@ const StatusFormModal: React.FC<{
                         <div className="mt-6 space-y-4">
                             <div>
                                 <label className="text-sm font-medium text-gray-300">Nome do Status</label>
-                                <input type="text" name="name" value={formData.name || ''} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm" />
+                                <input type="text" name="name" value={formData.name || ''} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm text-white" />
                             </div>
                              <div>
                                 <label className="text-sm font-medium text-gray-300">Cor</label>
-                                <select name="color" value={formData.color || 'gray'} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm">
+                                <select name="color" value={formData.color || 'gray'} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-600 bg-gray-800 rounded-md text-sm text-white">
                                     {colors.map(color => <option key={color} value={color} className={`text-${color}-300`}>{color.charAt(0).toUpperCase() + color.slice(1)}</option>)}
                                 </select>
                             </div>
@@ -166,6 +183,27 @@ const SettingsPage: React.FC = () => {
     setHasChanges(false);
   };
   
+  // Handlers para Ordenação
+  const moveField = (index: number, direction: 'up' | 'down') => {
+      const newFields = [...fields];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+      if (targetIndex >= 0 && targetIndex < newFields.length) {
+          // Troca de posição no array
+          const temp = newFields[index];
+          newFields[index] = newFields[targetIndex];
+          newFields[targetIndex] = temp;
+          
+          // Atualiza os orderIndex
+          newFields.forEach((f, idx) => {
+              f.orderIndex = idx + 1;
+          });
+
+          setFields(newFields);
+          setHasChanges(true);
+      }
+  };
+
   const handleOpenFieldModal = (field: FormField | null) => {
     setEditingField(field);
     setIsFieldModalOpen(true);
@@ -247,6 +285,7 @@ const SettingsPage: React.FC = () => {
             <table className="min-w-full divide-y divide-zinc-800">
               <thead className="bg-zinc-800/50">
                 <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Ordem</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Campo</th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Ativo (Formulário)</th>
                   <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">Obrigatório</th>
@@ -255,8 +294,26 @@ const SettingsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {fields.map(field => (
+                {fields.map((field, index) => (
                   <tr key={field.id} className="hover:bg-zinc-800/50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                        <div className="flex flex-col space-y-1">
+                            <button 
+                                onClick={() => moveField(index, 'up')} 
+                                disabled={index === 0}
+                                className={`text-gray-500 hover:text-white ${index === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            >
+                                ▲
+                            </button>
+                            <button 
+                                onClick={() => moveField(index, 'down')} 
+                                disabled={index === fields.length - 1}
+                                className={`text-gray-500 hover:text-white ${index === fields.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                            >
+                                ▼
+                            </button>
+                        </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <p className="text-sm font-medium text-white">{field.label}</p>
                       <p className="text-xs text-gray-400">{field.isStandard ? 'Padrão' : 'Personalizado'}</p>

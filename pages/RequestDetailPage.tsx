@@ -69,87 +69,130 @@ const RequestDetailPage: React.FC = () => {
       }
       return String(value);
   }
+  
+  const formatDate = (dateStr: string) => {
+      return new Date(dateStr).toLocaleString('pt-BR');
+  }
 
   return (
-    <div className="bg-zinc-900 shadow-xl rounded-lg overflow-hidden border border-zinc-800">
-      <div className="p-6 border-b border-zinc-800">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold text-white">
-            Detalhes da Solicitação: {request.orderNumber}
-          </h1>
-          <div className="flex items-center space-x-2">
-            {/* Alterado para link direto para /requests */}
-            <Button as="link" to="/requests" variant="secondary">
-              Voltar
-            </Button>
-            {/* Apenas Admins podem Editar/Excluir, Gerentes/Diretores apenas veem */}
-            {isPrivilegedUser && (
-              <>
-                <Button as="link" to={`/requests/edit/${request.id}`} variant="primary">
-                  📝 Editar Solicitação
-                </Button>
-                <Button variant="danger" onClick={() => setIsModalOpen(true)}>
-                  🗑️ Deletar Solicitação
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      <div className="p-6">
-        <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
-            {visibleFields.map(field => (
-                <div key={field.id} className="col-span-1">
-                    <dt className="text-sm font-medium text-gray-400">{field.label}</dt>
-                    <dd className="mt-1 text-sm text-gray-100">
-                        {renderFieldValue(field.id, (request as any)[field.id] || request.customFields?.[field.id])}
-                    </dd>
+    <div className="space-y-8">
+        <div className="bg-zinc-900 shadow-xl rounded-lg overflow-hidden border border-zinc-800">
+            <div className="p-6 border-b border-zinc-800">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                <h1 className="text-2xl font-bold text-white">
+                    Detalhes da Solicitação: {request.orderNumber}
+                </h1>
+                <div className="flex items-center space-x-2">
+                    <Button as="link" to="/requests" variant="secondary">
+                    Voltar
+                    </Button>
+                    {isPrivilegedUser && (
+                    <>
+                        <Button as="link" to={`/requests/edit/${request.id}`} variant="primary">
+                        📝 Editar Solicitação
+                        </Button>
+                        <Button variant="danger" onClick={() => setIsModalOpen(true)}>
+                        🗑️ Deletar Solicitação
+                        </Button>
+                    </>
+                    )}
                 </div>
-            ))}
-        </dl>
-        
-        <div className="mt-8">
-            <h3 className="text-lg font-medium text-white mb-4">Itens da Solicitação</h3>
-            <div className="border border-zinc-800 rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-zinc-800">
-                    <thead className="bg-zinc-800/50">
-                        <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Item</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Quantidade</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status do Item</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800">
-                        {request.items.length > 0 ? request.items.map((item) => (
-                            <tr key={item.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">{item.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">{item.quantity}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                    <StatusBadge statusName={item.status} />
-                                </td>
-                            </tr>
-                        )) : (
-                            <tr>
-                                <td colSpan={3} className="text-center py-10 text-gray-500">
-                                    Nenhum item encontrado.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                </div>
+            </div>
+            
+            <div className="p-6">
+                <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+                    {visibleFields.map(field => (
+                        <div key={field.id} className={`${field.id === 'description' || field.type === 'textarea' ? 'col-span-1 md:col-span-2' : 'col-span-1'}`}>
+                            <dt className="text-sm font-medium text-gray-400">{field.label}</dt>
+                            <dd className={`mt-1 text-sm text-gray-100 ${field.id === 'description' || field.type === 'textarea' ? 'whitespace-pre-wrap' : ''}`}>
+                                {renderFieldValue(field.id, (request as any)[field.id] || request.customFields?.[field.id])}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+                
+                <div className="mt-8">
+                    <h3 className="text-lg font-medium text-white mb-4">Itens da Solicitação</h3>
+                    <div className="border border-zinc-800 rounded-lg overflow-hidden">
+                        <table className="min-w-full divide-y divide-zinc-800">
+                            <thead className="bg-zinc-800/50">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Item</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Quantidade</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status do Item</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800">
+                                {request.items.length > 0 ? request.items.map((item) => (
+                                    <tr key={item.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">{item.name}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">{item.quantity}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <StatusBadge statusName={item.status} />
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={3} className="text-center py-10 text-gray-500">
+                                            Nenhum item encontrado.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-      </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Confirmar Exclusão"
-      >
-        Você tem certeza que deseja deletar a solicitação {request.orderNumber}? Esta ação não pode ser desfeita.
-      </Modal>
+        {/* --- HISTÓRICO DE ALTERAÇÕES --- */}
+        <div className="bg-zinc-900 shadow-xl rounded-lg overflow-hidden border border-zinc-800">
+            <div className="p-6 border-b border-zinc-800">
+                 <h3 className="text-lg font-bold text-white">Histórico de Alterações</h3>
+            </div>
+            <div className="overflow-x-auto">
+                 <table className="min-w-full divide-y divide-zinc-800">
+                     <thead className="bg-zinc-800/50">
+                         <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Data/Hora</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Usuário</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Campo Alterado</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Antes</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Depois</th>
+                         </tr>
+                     </thead>
+                     <tbody className="divide-y divide-zinc-800">
+                        {request.history && request.history.length > 0 ? (
+                             [...request.history].reverse().map((entry, index) => (
+                                 <tr key={index} className="hover:bg-zinc-800/50">
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{formatDate(entry.date)}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-medium">{entry.user}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">{entry.field}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-red-400/80 line-through decoration-red-500/50">{entry.oldValue}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400">{entry.newValue}</td>
+                                 </tr>
+                             ))
+                        ) : (
+                             <tr>
+                                 <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                                     Nenhuma alteração registrada no histórico.
+                                 </td>
+                             </tr>
+                        )}
+                     </tbody>
+                 </table>
+            </div>
+        </div>
+
+        <Modal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onConfirm={handleDelete}
+            title="Confirmar Exclusão"
+        >
+            Você tem certeza que deseja deletar a solicitação {request.orderNumber}? Esta ação não pode ser desfeita.
+        </Modal>
     </div>
   );
 };

@@ -45,7 +45,7 @@ const formatDate = (dateString: string | undefined) => {
 }
 
 const DashboardPage: React.FC = () => {
-  const { requests, loading } = useRequests();
+  const { requests, loading, formFields } = useRequests();
   const { user, hasFullVisibility, sectors } = useAuth();
 
   const filteredRequests = useMemo(() => {
@@ -120,7 +120,43 @@ const DashboardPage: React.FC = () => {
   const concluded = filteredRequests.filter(r => r.status === 'Entregue').length;
   
   const recentRequests = filteredRequests.slice(0, 5);
-  const todayDate = new Date().toISOString().split('T')[0];
+  
+  // Colunas Visíveis (Sincronizado com a configuração de campos)
+  const visibleColumns = formFields.filter(f => f.isVisibleInList !== false);
+
+  const getCellValue = (request: any, fieldId: string, isStandard: boolean) => {
+      const value = isStandard ? request[fieldId] : request.customFields?.[fieldId];
+      if (value === undefined || value === null) return '-';
+      
+      if (fieldId === 'status') {
+          return <StatusBadge statusName={String(value)} />;
+      }
+
+      // Lógica específica do Dashboard: Highlight de atraso
+      if (fieldId === 'deliveryDate') {
+           const todayDate = new Date().toISOString().split('T')[0];
+           const isOverdue = value && value < todayDate && request.status !== 'Entregue';
+           return (
+               <span className={isOverdue ? 'text-red-500 font-semibold' : 'text-gray-300'}>
+                   {formatDate(value)}
+               </span>
+           );
+      }
+
+      // Lógica específica do Dashboard: Truncar descrição
+      if (fieldId === 'description') {
+           return (
+               <span className="block max-w-xs truncate text-gray-300" title={String(value)}>
+                   {String(value)}
+               </span>
+           )
+      }
+
+      if (fieldId === 'requestDate' || (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value))) {
+          return <span className="text-gray-300">{formatDate(value)}</span>;
+      }
+      return <span className="text-gray-300">{value}</span>;
+  };
 
   return (
     <div className="space-y-8">
@@ -218,30 +254,27 @@ const DashboardPage: React.FC = () => {
             <table className="min-w-full divide-y divide-zinc-800">
                 <thead className="bg-zinc-800/50">
                     <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Nº Pedido</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Descrição</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Fornecedor</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Responsável</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Previsão de Entrega</th>
+                         {visibleColumns.map(field => (
+                             <th key={field.id} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                {field.label}
+                            </th>
+                        ))}
                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
                  <tbody className="divide-y divide-zinc-800">
                     {recentRequests.length > 0 ? recentRequests.map((request) => {
-                        const isOverdue = request.deliveryDate && request.deliveryDate < todayDate && request.status !== 'Entregue';
                         return (
                         <tr key={request.id} className="hover:bg-zinc-800/50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{request.orderNumber}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 max-w-xs truncate" title={request.description}>{request.description || '-'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.supplier}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{request.responsible || 'N/A'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <StatusBadge statusName={request.status} />
-                            </td>
-                            <td className={`px-6 py-4 whitespace-nowrap text-sm ${isOverdue ? 'text-red-500 font-semibold' : 'text-gray-300'}`}>
-                                {formatDate(request.deliveryDate)}
-                            </td>
+                             {visibleColumns.map(field => (
+                                <td key={`${request.id}-${field.id}`} className="px-6 py-4 whitespace-nowrap text-sm">
+                                     {field.id === 'orderNumber' ? (
+                                        <span className="font-medium text-white">{getCellValue(request, field.id, field.isStandard)}</span>
+                                    ) : (
+                                        getCellValue(request, field.id, field.isStandard)
+                                    )}
+                                </td>
+                            ))}
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <Link to={`/requests/${request.id}`} className="text-blue-400 hover:text-blue-300">
                                     Ver
@@ -251,7 +284,7 @@ const DashboardPage: React.FC = () => {
                         );
                     }) : (
                         <tr>
-                            <td colSpan={7} className="text-center py-10 text-gray-500">
+                            <td colSpan={visibleColumns.length + 1} className="text-center py-10 text-gray-500">
                                 Nenhuma solicitação encontrada.
                             </td>
                         </tr>

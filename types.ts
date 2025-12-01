@@ -7,18 +7,28 @@ export interface RequestItem {
   status: string;
 }
 
+export interface RequestHistoryEntry {
+  date: string; // ISO string
+  user: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
 export interface Request {
   id: number;
   orderNumber: string;
   requestDate: string;
+  requester: string; // Novo campo: Solicitante
   sector: string;
   supplier: string;
-  description?: string; // Novo campo
+  description?: string;
   deliveryDate?: string;
   status: string;
-  responsible: string;
+  responsible: string; // Quem dá andamento
   items: RequestItem[];
   customFields?: { [key: string]: any };
+  history?: RequestHistoryEntry[];
 }
 
 export interface FormField {

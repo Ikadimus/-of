@@ -50,11 +50,40 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (fieldsError && fieldsError.code !== 'PGRST205' && fieldsError.code !== '42P01') {
              // Apenas loga erro real
         } else if (fieldsData && fieldsData.length > 0) {
-            // Garante que o campo isVisibleInList exista (backwards compatibility)
-            const sanitizedFields = fieldsData.map((f: any) => ({
+            // Garante que o campo isVisibleInList e orderIndex existam
+            let sanitizedFields = fieldsData.map((f: any) => ({
                 ...f,
-                isVisibleInList: f.isVisibleInList !== undefined ? f.isVisibleInList : (f.isStandard ? true : false)
+                isVisibleInList: f.isVisibleInList !== undefined ? f.isVisibleInList : (f.isStandard ? true : false),
+                orderIndex: f.orderIndex !== undefined && f.orderIndex !== null ? f.orderIndex : 99 // Ordem padrão fim da fila
             }));
+            
+            // --- CORREÇÃO AUTOMÁTICA DE CAMPO DESCRIÇÃO ---
+            const hasDescription = sanitizedFields.some((f: any) => f.id === 'description');
+            if (!hasDescription) {
+                const descField = initialFormFields.find(f => f.id === 'description');
+                if (descField) {
+                    sanitizedFields.push(descField);
+                    supabase.from('form_fields').insert(descField).then(({ error }) => {
+                        if (!error) console.log("Campo 'description' corrigido automaticamente.");
+                    });
+                }
+            }
+
+            // --- CORREÇÃO AUTOMÁTICA DE CAMPO SOLICITANTE ---
+            const hasRequester = sanitizedFields.some((f: any) => f.id === 'requester');
+            if (!hasRequester) {
+                const reqField = initialFormFields.find(f => f.id === 'requester');
+                if (reqField) {
+                    sanitizedFields.push(reqField);
+                    supabase.from('form_fields').insert(reqField).then(({ error }) => {
+                        if (!error) console.log("Campo 'requester' corrigido automaticamente.");
+                    });
+                }
+            }
+            
+            // Ordena os campos
+            sanitizedFields.sort((a: any, b: any) => (a.orderIndex || 99) - (b.orderIndex || 99));
+
             setFormFields(sanitizedFields);
         } else if (!fieldsError) {
             // Auto-seed se vazio e sem erro de tabela
@@ -63,7 +92,7 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
                 await supabase.from('form_fields').insert(f);
             }
             const { data: newFields } = await supabase.from('form_fields').select('*');
-            if(newFields) setFormFields(newFields);
+            if(newFields) setFormFields(newFields.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)));
         }
 
         // --- STATUSES ---
@@ -150,6 +179,11 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     await supabase.from('requests').delete().eq('id', id);
   };
   
+  const moveField = async (index: number, direction: 'up' | 'down') => {
+       // Função auxiliar para reordenar (apenas estado local para UI rápida, a persistência é via updateFormFields)
+       // Implementado no componente SettingsPage, mas a lógica de banco pode ser abstraída aqui futuramente
+  };
+  
   const updateFormFields = async (fields: FormField[]) => {
     // Atualização otimista
     setFormFields(fields);
@@ -160,13 +194,17 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addFormField = async (field: Pick<FormField, 'label' | 'type'>) => {
+    // Calcula próximo orderIndex
+    const maxOrder = Math.max(...formFields.map(f => f.orderIndex || 0), 0);
+    
     const newField: FormField = {
       ...field,
       id: `custom-${Date.now()}`,
       isActive: true,
       required: false,
       isStandard: false,
-      isVisibleInList: true // Default to true for new fields
+      isVisibleInList: true, // Default to true for new fields
+      orderIndex: maxOrder + 1
     };
     // Atualização otimista
     setFormFields(prev => [...prev, newField]);

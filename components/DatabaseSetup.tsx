@@ -26,6 +26,7 @@ create table if not exists public.requests (
   id bigint primary key,
   "orderNumber" text not null,
   "requestDate" text,
+  requester text,
   sector text,
   supplier text,
   description text,
@@ -33,7 +34,8 @@ create table if not exists public.requests (
   status text,
   responsible text,
   items jsonb default '[]'::jsonb,
-  "customFields" jsonb default '{}'::jsonb
+  "customFields" jsonb default '{}'::jsonb,
+  history jsonb default '[]'::jsonb
 );
 
 -- 4. Tabela de Campos do Formulário
@@ -94,10 +96,34 @@ begin
   end if; 
 end $$;
 
--- Insere o campo 'description' na configuração de campos se não existir
+-- Adiciona coluna de Solicitante (Requester) na tabela de Solicitações
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='requester') then 
+    alter table public.requests add column "requester" text; 
+  end if; 
+end $$;
+
+-- Adiciona coluna de Histórico na tabela de Solicitações
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_name='requests' and column_name='history') then 
+    alter table public.requests add column "history" jsonb default '[]'::jsonb; 
+  end if; 
+end $$;
+
+-- Insere o campo 'description' se não existir
 insert into public.form_fields (id, label, type, "isActive", required, "isStandard", "isVisibleInList", "orderIndex")
-select 'description', 'Descrição', 'text', true, false, true, true, 2
+select 'description', 'Descrição', 'text', true, false, true, true, 5
 where not exists (select 1 from public.form_fields where id = 'description');
+
+-- Insere o campo 'requester' se não existir
+insert into public.form_fields (id, label, type, "isActive", required, "isStandard", "isVisibleInList", "orderIndex")
+select 'requester', 'Solicitante', 'select', true, true, true, true, 3
+where not exists (select 1 from public.form_fields where id = 'requester');
+
+-- Atualiza o rótulo do Responsável para ficar mais claro
+update public.form_fields set label = 'Responsável (Atendimento)' where id = 'responsible';
 
 -- Insere setores especiais se não existirem
 insert into public.sectors (id, name, description)
@@ -120,7 +146,7 @@ where not exists (select 1 from public.sectors where name = 'Diretor');
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-white mb-2">Configuração Inicial do Banco de Dados</h2>
         <p className="text-gray-400">
-          O sistema conectou ao Supabase, mas as tabelas ainda não existem.
+          O sistema conectou ao Supabase, mas as tabelas ainda não existem ou precisam de atualização.
         </p>
       </div>
 
