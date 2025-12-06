@@ -177,38 +177,74 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const userPayload = { ...newUser, id: Date.now() };
     // Atualização Otimista
     setUsers(prev => [...prev, userPayload as User]);
-    await supabase.from('users').insert(userPayload);
+    
+    const { error } = await supabase.from('users').insert(userPayload);
+    if (error) {
+        console.error("Erro ao adicionar usuário:", error);
+        alert("Erro ao criar usuário.");
+    }
   };
 
   const updateUser = async (id: number, updatedUser: Partial<User>) => {
     // Atualização Otimista
     setUsers(prev => prev.map(u => u.id === id ? { ...u, ...updatedUser } : u));
-    await supabase.from('users').update(updatedUser).eq('id', id);
+    
+    // CRÍTICO: Remove o ID do payload
+    const { id: _, ...payload } = updatedUser as any;
+    
+    const { error } = await supabase.from('users').update(payload).eq('id', id);
+    if (error) {
+        console.error("Erro ao atualizar usuário:", error);
+        alert("Erro ao salvar dados do usuário.");
+    }
   };
 
   const deleteUser = async (id: number) => {
     // Atualização Otimista
     setUsers(prev => prev.filter(u => u.id !== id));
-    await supabase.from('users').delete().eq('id', id);
+    
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (error) {
+        console.error("Erro ao deletar usuário:", error);
+        alert("Erro ao excluir usuário.");
+    }
   };
   
   const addSector = async (newSector: Omit<Sector, 'id'>) => {
     const sectorPayload = { ...newSector, id: `sector-${Date.now()}` };
     // Atualização Otimista
     setSectors(prev => [...prev, sectorPayload]);
-    await supabase.from('sectors').insert(sectorPayload);
+    
+    const { error } = await supabase.from('sectors').insert(sectorPayload);
+    if (error) {
+        console.error("Erro ao adicionar setor:", error);
+        alert("Erro ao criar setor.");
+    }
   };
 
   const updateSector = async (id: string, updatedSector: Partial<Sector>) => {
     // Atualização Otimista
     setSectors(prev => prev.map(s => s.id === id ? { ...s, ...updatedSector } : s));
-    await supabase.from('sectors').update(updatedSector).eq('id', id);
+    
+    // CRÍTICO: Remove o ID do payload
+    const { id: _, ...payload } = updatedSector as any;
+
+    const { error } = await supabase.from('sectors').update(payload).eq('id', id);
+    if (error) {
+        console.error("Erro ao atualizar setor:", error);
+        alert("Erro ao salvar dados do setor.");
+    }
   };
 
   const deleteSector = async (id: string) => {
     // Atualização Otimista
     setSectors(prev => prev.filter(s => s.id !== id));
-    await supabase.from('sectors').delete().eq('id', id);
+    
+    const { error } = await supabase.from('sectors').delete().eq('id', id);
+    if (error) {
+        console.error("Erro ao deletar setor:", error);
+        alert("Erro ao excluir setor.");
+    }
   };
 
   return (

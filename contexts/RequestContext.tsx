@@ -162,34 +162,49 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Atualização otimista: atualiza o estado local imediatamente
     setRequests(prev => [newRequest as Request, ...prev]);
     
-    await supabase.from('requests').insert(newRequest);
+    const { error } = await supabase.from('requests').insert(newRequest);
+    if (error) {
+        console.error("Erro ao adicionar solicitação:", error);
+        alert("Erro ao salvar solicitação. Verifique a conexão.");
+    }
   };
 
   const updateRequest = async (id: number, updatedRequest: Partial<Request>) => {
     // Atualização otimista
     setRequests(prev => prev.map(r => r.id === id ? { ...r, ...updatedRequest } : r));
 
-    await supabase.from('requests').update(updatedRequest).eq('id', id);
+    // REMOVE o ID do payload para evitar erro de atualização de PK
+    const { id: _, ...payload } = updatedRequest as any;
+
+    const { error } = await supabase.from('requests').update(payload).eq('id', id);
+    if (error) {
+        console.error("Erro ao atualizar solicitação:", error);
+        alert("Erro ao salvar alterações da solicitação.");
+    }
   };
 
   const deleteRequest = async (id: number) => {
     // Atualização otimista
     setRequests(prev => prev.filter(r => r.id !== id));
 
-    await supabase.from('requests').delete().eq('id', id);
-  };
-  
-  const moveField = async (index: number, direction: 'up' | 'down') => {
-       // Função auxiliar para reordenar (apenas estado local para UI rápida, a persistência é via updateFormFields)
-       // Implementado no componente SettingsPage, mas a lógica de banco pode ser abstraída aqui futuramente
+    const { error } = await supabase.from('requests').delete().eq('id', id);
+    if (error) {
+        console.error("Erro ao deletar solicitação:", error);
+        alert("Erro ao excluir solicitação.");
+    }
   };
   
   const updateFormFields = async (fields: FormField[]) => {
     // Atualização otimista
     setFormFields(fields);
 
+    // Para update em massa/upsert, precisamos do ID, então não removemos aqui.
+    // Upsert geralmente lida bem com IDs existentes.
     for (const field of fields) {
-        await supabase.from('form_fields').upsert(field);
+        const { error } = await supabase.from('form_fields').upsert(field);
+        if (error) {
+             console.error("Erro ao salvar configuração de campo:", error);
+        }
     }
   };
 
@@ -209,21 +224,36 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Atualização otimista
     setFormFields(prev => [...prev, newField]);
 
-    await supabase.from('form_fields').insert(newField);
+    const { error } = await supabase.from('form_fields').insert(newField);
+    if (error) {
+        console.error("Erro ao adicionar campo:", error);
+        alert("Erro ao criar novo campo.");
+    }
   };
 
   const updateFormField = async (id: string, updatedField: Partial<FormField>) => {
     // Atualização otimista
     setFormFields(prev => prev.map(f => f.id === id ? { ...f, ...updatedField } : f));
 
-    await supabase.from('form_fields').update(updatedField).eq('id', id);
+    // CRÍTICO: Remove o ID do payload antes de enviar o update
+    const { id: _, ...payload } = updatedField as any;
+
+    const { error } = await supabase.from('form_fields').update(payload).eq('id', id);
+    if (error) {
+        console.error("Erro ao atualizar campo:", error);
+        alert(`Erro ao salvar campo: ${error.message}`);
+    }
   };
 
   const deleteFormField = async (id: string) => {
     // Atualização otimista
     setFormFields(prev => prev.filter(f => f.id !== id));
 
-    await supabase.from('form_fields').delete().eq('id', id);
+    const { error } = await supabase.from('form_fields').delete().eq('id', id);
+    if (error) {
+        console.error("Erro ao deletar campo:", error);
+        alert("Erro ao excluir campo.");
+    }
   };
 
   const addStatus = async (status: Omit<Status, 'id'>) => {
@@ -231,21 +261,36 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Atualização otimista
     setStatuses(prev => [...prev, newStatus]);
 
-    await supabase.from('statuses').insert(newStatus);
+    const { error } = await supabase.from('statuses').insert(newStatus);
+    if (error) {
+         console.error("Erro ao adicionar status:", error);
+         alert("Erro ao criar novo status.");
+    }
   };
 
   const updateStatus = async (id: string, updatedStatus: Partial<Status>) => {
     // Atualização otimista
     setStatuses(prev => prev.map(s => s.id === id ? { ...s, ...updatedStatus } : s));
 
-    await supabase.from('statuses').update(updatedStatus).eq('id', id);
+    // CRÍTICO: Remove o ID do payload antes de enviar o update
+    const { id: _, ...payload } = updatedStatus as any;
+
+    const { error } = await supabase.from('statuses').update(payload).eq('id', id);
+    if (error) {
+         console.error("Erro ao atualizar status:", error);
+         alert(`Erro ao salvar status: ${error.message}`);
+    }
   };
 
   const deleteStatus = async (id: string) => {
     // Atualização otimista
     setStatuses(prev => prev.filter(s => s.id !== id));
 
-    await supabase.from('statuses').delete().eq('id', id);
+    const { error } = await supabase.from('statuses').delete().eq('id', id);
+    if (error) {
+        console.error("Erro ao deletar status:", error);
+        alert("Erro ao excluir status.");
+    }
   };
 
   return (
