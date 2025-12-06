@@ -10,8 +10,8 @@ interface RequestContextType {
   statuses: Status[];
   loading: boolean;
   getRequestById: (id: number) => Request | undefined;
-  addRequest: (request: Omit<Request, 'id'>) => Promise<void>;
-  updateRequest: (id: number, updatedRequest: Partial<Request>) => Promise<void>;
+  addRequest: (request: Omit<Request, 'id'>) => Promise<boolean>;
+  updateRequest: (id: number, updatedRequest: Partial<Request>) => Promise<boolean>;
   deleteRequest: (id: number) => Promise<void>;
   updateFormFields: (fields: FormField[]) => Promise<void>;
   addFormField: (field: Pick<FormField, 'label' | 'type'>) => Promise<void>;
@@ -157,7 +157,7 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     return requests.find(r => r.id === id);
   };
 
-  const addRequest = async (request: Omit<Request, 'id'>) => {
+  const addRequest = async (request: Omit<Request, 'id'>): Promise<boolean> => {
     const newRequest = { ...request, id: Date.now() }; 
     // Atualização otimista: atualiza o estado local imediatamente
     setRequests(prev => [newRequest as Request, ...prev]);
@@ -166,10 +166,12 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (error) {
         console.error("Erro ao adicionar solicitação:", error);
         alert("Erro ao salvar solicitação. Verifique a conexão.");
+        return false;
     }
+    return true;
   };
 
-  const updateRequest = async (id: number, updatedRequest: Partial<Request>) => {
+  const updateRequest = async (id: number, updatedRequest: Partial<Request>): Promise<boolean> => {
     // Atualização otimista
     setRequests(prev => prev.map(r => r.id === id ? { ...r, ...updatedRequest } : r));
 
@@ -180,7 +182,9 @@ export const RequestProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (error) {
         console.error("Erro ao atualizar solicitação:", error);
         alert("Erro ao salvar alterações da solicitação.");
+        return false;
     }
+    return true;
   };
 
   const deleteRequest = async (id: number) => {

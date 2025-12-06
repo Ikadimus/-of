@@ -73,11 +73,12 @@ const RequestEditPage: React.FC = () => {
     setItems(items.filter(item => item.id !== id));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (requestData && requestData.id && initialData) {
         // --- Lógica de Auditoria (Diff) ---
-        const historyEntries: RequestHistoryEntry[] = requestData.history || [];
+        // Clone para evitar mutação do estado durante render
+        const historyEntries: RequestHistoryEntry[] = [...(requestData.history || [])];
         const now = new Date().toISOString();
         const userName = user?.name || 'Desconhecido';
         
@@ -111,7 +112,6 @@ const RequestEditPage: React.FC = () => {
 
         // 2. Verificar Itens
         // Simplificação: Compara o JSON string. Se diferente, registra que itens mudaram.
-        // Para uma auditoria item a item seria necessário um algoritmo mais complexo de diff de arrays.
         const oldItemsStr = JSON.stringify(initialItems);
         const newItemsStr = JSON.stringify(items);
         
@@ -125,9 +125,13 @@ const RequestEditPage: React.FC = () => {
             });
         }
 
-        // Salvar
-        updateRequest(requestData.id, { ...requestData, items, history: historyEntries });
-        navigate(`/requests/${requestData.id}`, { replace: true });
+        // Salvar - AGUARDA resposta do banco
+        const success = await updateRequest(requestData.id, { ...requestData, items, history: historyEntries });
+        
+        if (success) {
+             navigate(`/requests/${requestData.id}`, { replace: true });
+        }
+        // Se falhar, o usuário permanece na página para tentar novamente
     }
   };
 
